@@ -81,7 +81,7 @@ python .claude/skills/smart-learn/docx_utils.py init \
 
 输出后等待用户回应：
 - "继续" / "OK" → 进入步骤2
-- "调整XX" → 修改后重新确认
+- "调整XX" → 修改概念地图 → 重新输出 → **重新执行 mindmap 和 Word 同步（覆盖更新）** → 重新询问确认
 
 **→ 保存检查点**（中断恢复用）：
 ```bash
@@ -121,10 +121,52 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
 **一句话** → {离开后能记住的那句}
 ```
 
-每讲完一个概念，等待用户回应：
-- "继续" / "下一个" → 讲下一个
-- "换一个类比" / "没懂" → 用不同类比重讲（此时不写 Word，确认理解了再写）
-- 任意提问 → 针对性解答
+**每个概念的执行顺序（严格遵守，不可跳过任何一步）**：
+
+```
+1. 输出该概念的五维解释
+        ↓
+2. ⚡ 执行 mindmap 同步命令（必须实际运行 Bash，不可只声明）
+        ↓
+3. ⚡ 将解释内容写入临时文件，执行 Word 写入命令（必须实际运行 Bash）
+        ↓
+4. 告知用户文件已更新（显示路径）
+        ↓
+5. 询问用户：继续 / 修改 / 换类比 / 提问
+```
+
+**用户回应后的处理**：
+
+| 用户回应 | 处理方式 |
+|---------|---------|
+| "继续" / "下一个" | 已完成同步，直接讲下一个概念 |
+| "修改XX部分" | 按反馈调整解释 → 重新执行步骤 1→2→3→4→5（mindmap 覆盖更新，Word 以 `{概念名}（修正）` 追加修订版） |
+| "换一个类比" / "没懂" | 用不同类比重讲，用户确认后执行步骤 2→3→4→5 |
+| 任意提问 | 针对性解答，确认后继续 |
+
+**→ 同步到思维导图**（每概念确认后必须执行）：
+```bash
+python .claude/skills/smart-learn/mindmap_utils.py update \
+  --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 2 \
+  --concept "{概念名}" --core "{核心思想摘要}" --analogy "{类比关键词}"
+```
+执行后告知用户：`🧠 已同步到思维导图：knowledge_store/{主题}_思维导图.md`
+
+**→ 写入 Word**（每概念确认后必须执行）：
+```bash
+# 先将该概念的完整 Markdown 解释写入临时文件
+cat > /tmp/smart-learn-step2-concept.md << 'EOF'
+### {序号}. {概念名}
+
+**为什么需要？**
+{解释内容}
+...
+EOF
+python .claude/skills/smart-learn/docx_utils.py add-step \
+  --file "{DOCX_PATH}" --step 2 --title "{序号}. {概念名}" \
+  --content-file /tmp/smart-learn-step2-concept.md
+```
+执行后告知用户：`📄 已写入 Word：knowledge_store/{主题}_学习笔记.docx`
 
 全部概念讲完后，用 3~5 句话串联串讲，然后进入步骤3。
 
@@ -132,21 +174,7 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
 - 用未解释的术语解释另一个术语
 - 从定义开始（必须从"为什么需要"开始）
 - 类比用另一个技术概念
-
-**→ 同步到思维导图**（每概念确认后更新核心思想 + 类比）：
-```bash
-python .claude/skills/smart-learn/mindmap_utils.py update \
-  --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 2 \
-  --concept "{概念名}" --core "{核心思想摘要}" --analogy "{类比关键词}"
-```
-执行后告知用户：`🧠 {概念名} 已同步到思维导图`（首次同步时给出完整路径）
-
-**→ 写入 Word**（每个概念用户确认后立即写入）：
-```bash
-python .claude/skills/smart-learn/docx_utils.py add-step \
-  --file "{DOCX_PATH}" --step 2 --title "{序号}. {概念名}" \
-  --content-file /tmp/smart-learn-step2-concept.md
-```
+- **声明"已同步"但未实际执行 Bash 命令**（这是最严重的执行错误）
 
 ---
 
@@ -159,6 +187,22 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
 | 理解层 | 改变条件问变化 | 核心机制类（如缓存策略） |
 | 应用层 | 新场景设计方案 | 工程实践类（如API设计） |
 | 边界层 | 什么时候失效 | 理论约束类（如CAP定理） |
+
+**每题的执行顺序（严格遵守）**：
+
+```
+1. 出题，等待用户回答
+        ↓
+2. 给出点评 + 参考答案 + 掌握度
+        ↓
+3. ⚡ 如果是 ❌ 薄弱 → 执行 mindmap 标记命令
+        ↓
+4. ⚡ 执行 Word 写入命令（含题目+回答+点评+参考答案）
+        ↓
+5. 告知用户文件已更新
+        ↓
+6. 出下一道题（或汇总）
+```
 
 **逐个提问**，每次只出一道题。用户回答后给出：
 - **点评**：具体评价哪里好、哪里不足
@@ -173,21 +217,30 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
   3. 用户回答后点评
   4. 直到掌握度变为 ✅/⚠️ 或用户说"先继续"
   5. 更新思维导图移除该概念的 ⚠️ 标记（如果已掌握）
+  6. **薄弱概念回顾的每一步也要同步到 Word（追加"回顾修正"记录）**
 
-**→ 同步到思维导图**（每题点评后，如果标记为 ❌ 薄弱则更新）：
+**→ 同步到思维导图**（每题点评后，❌ 薄弱则必须执行）：
 ```bash
 python .claude/skills/smart-learn/mindmap_utils.py update \
   --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 3 \
   --concept "{概念名}" --weak "{薄弱原因摘要}"
 ```
-如有薄弱点标记，告知用户：`🧠 {概念名} 已标记 ⚠️ 到思维导图`
+执行后告知用户：`🧠 {概念名} 已标记薄弱点到思维导图`
 
-**→ 写入 Word**（每题点评后立即写入，含题目+用户回答+点评+参考答案）：
+**→ 写入 Word**（每题点评后必须执行）：
 ```bash
+cat > /tmp/smart-learn-step3-q.md << 'EOF'
+**问题**：{题目}
+**你的回答**：{用户回答摘要}
+**点评**：{点评}
+**参考答案**：{参考答案}
+**掌握度**：{✅/⚠️/❌}
+EOF
 python .claude/skills/smart-learn/docx_utils.py add-step \
   --file "{DOCX_PATH}" --step 3 --title "{概念名} — 自测" \
   --content-file /tmp/smart-learn-step3-q.md
 ```
+执行后告知用户：`📄 自测记录已写入 Word`
 
 ---
 
@@ -204,19 +257,42 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
 3. 如果没有，告知"这是该领域的第一个知识节点"
 4. 输出文本版知识网络图
 
-输出后等待用户回应：
-- "继续" → 进入步骤5
-- "补充关联" → 用户提出更多关联角度，追加分析
+**步骤4的执行顺序（严格遵守）**：
 
-**→ 同步到思维导图**（每个关联主题添加一个连接）：
+```
+1. 检索并输出知识网络图
+        ↓
+2. ⚡ 对每个关联主题执行 mindmap 关联命令
+        ↓
+3. ⚡ 执行 Word 写入命令（含对比表格和网络图）
+        ↓
+4. 告知用户文件已更新
+        ↓
+5. 询问用户：继续 / 补充关联
+```
+
+用户回应：
+- "继续" → 进入步骤5
+- "补充关联" → 用户提出更多关联角度 → 追加分析 → 重新执行步骤 2→3→4（mindmap 自动去重，Word 追加新关联）
+
+**→ 同步到思维导图**（每个关联主题必须执行）：
 ```bash
 python .claude/skills/smart-learn/mindmap_utils.py update \
   --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 4 \
   --assoc-target "{关联主题名}" --assoc-relation "{一句话关系}"
 ```
-告知用户：`🧠 知识关联已添加到思维导图`
+执行后告知用户：`🧠 知识关联已添加到思维导图`
 
-**→ 写入 Word**（含对比表格和网络图），告知用户：`📄 关联分析已写入 Word`
+**→ 写入 Word**（必须执行）：
+```bash
+cat > /tmp/smart-learn-step4.md << 'EOF'
+{关联分析的对比表格和网络图内容}
+EOF
+python .claude/skills/smart-learn/docx_utils.py add-step \
+  --file "{DOCX_PATH}" --step 4 --title "关联内化" \
+  --content-file /tmp/smart-learn-step4.md
+```
+执行后告知用户：`📄 关联分析已写入 Word`
 
 ---
 
@@ -245,8 +321,8 @@ python .claude/skills/smart-learn/mindmap_utils.py update \
 ```
 
 输出精华笔记后等待用户回应：
-- "保存" → 写入所有文件
-- "修改XX" → 调整后重新确认
+- "保存" → 写入所有文件（见下方持久化步骤）
+- "修改XX" → 调整对应部分 → 重新输出完整精华笔记 → 重新询问确认（确认后一次性写入所有文件）
 
 **持久化**（用户确认后执行）：
 1. **必做**：将完整五步报告写入 `knowledge_store/{主题slug}.md`
