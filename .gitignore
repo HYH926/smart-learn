@@ -1,0 +1,23 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Knowledge store (user's personal learning data)
+knowledge_store/
+
+# Python (if user adds scripts later)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Temp
+*.tmp
+*.swp
+*.swo
+*~

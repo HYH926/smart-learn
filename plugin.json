@@ -1,0 +1,17 @@
+{
+  "name": "smart-learn",
+  "version": "1.0.0",
+  "description": "Smart Learn — 基于费曼学习法的 Claude Code 内联学习技能。输入一个主题，AI 在主对话中一步步引导你完成五步闭环：概念地图 → 费曼解释 → 自测检验 → 关联内化 → 巩固总结。所有步骤透明可见，零外部依赖。",
+  "author": "HYH926",
+  "repository": "https://github.com/HYH926/smart-learn",
+  "keywords": [
+    "learning",
+    "feynman-technique",
+    "education",
+    "knowledge-management",
+    "self-test",
+    "skill"
+  ],
+  "commands": [".claude/commands/smart-learn.md"],
+  "skills": [".claude/skills/smart-learn/SKILL.md"]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Smart Learn",
+  "description": "基于费曼学习法的 Claude Code 内联学习技能 —— 五步闭环透明执行，零依赖，Markdown 知识库沉淀",
+  "plugins": [
+    {
+      "name": "smart-learn",
+      "source": "./",
+      "description": "五步学习闭环（概念地图→费曼解释→自测检验→关联内化→巩固总结），主对话内联执行，所有步骤实时可见",
+      "version": "1.0.0",
+      "author": "HYH926",
+      "keywords": ["learning", "feynman", "education", "skill"]
+    }
+  ]
+}
