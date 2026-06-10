@@ -49,9 +49,18 @@ python .claude/skills/smart-learn/docx_utils.py init \
 
 - 记录 `MINDMAP_FILE` 和 `MINDMAP_DATA` 路径，后续每步同步更新
 - 如果 docx init 返回 `"status": "no_docx"` → 告知用户可 `pip install python-docx`，继续执行
-- **学习中断恢复**：初始化时检查 `knowledge_store/{主题slug}_checkpoint.json` 是否存在：
-  - 如果存在 → 告知用户"检测到上次未完成的学习（已完成步骤N）"，询问"继续上次 / 重新开始"
-  - 如果选择继续 → 跳转到对应步骤继续执行，恢复已有状态
+- **智能入口检测**：初始化时按以下顺序检查已学记录：
+  1. 检查 `knowledge_store/{主题slug}_checkpoint.json` → 存在 = 有未完成学习
+  2. 检查 `knowledge_store/{主题}.md` 或 `knowledge_store/{主题}_学习笔记.docx` → 存在 = 已学完
+  3. 检查 `knowledge_store/` 下文件名含关键词的笔记 → 存在 = 有相关知识
+  
+  根据检测结果询问用户：
+  - **有未完成学习** → "检测到上次未完成的学习（已完成步骤N）。继续上次 / 重新开始 / 快速复习已有笔记？"
+  - **已学完该主题** → "你已学过「{主题}」。快速复习 / 重新深度学习（覆盖旧笔记）？"
+  - **有相关主题笔记** → "检测到你学过相关主题「{相关主题}」，本次学习时会做关联"
+  - **无任何记录** → 正常开始五步学习
+  - 如果用户选择"快速复习" → 切换到 `/smart-review` 流程
+  - 如果选择"继续上次" → 跳转到对应步骤，恢复已有状态
   - 每完成一步 → 更新 checkpoint（`{"topic":"...", "last_step": N, "mindmap_data":"...", "docx_path":"..."}`）
 
 ---
