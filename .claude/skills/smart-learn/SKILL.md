@@ -94,6 +94,7 @@ python .claude/skills/smart-learn/mindmap_utils.py update \
   --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 1 \
   --concepts '[{"name":"概念1","difficulty":"入门","purpose":"解决问题X"}, ...]'
 ```
+执行后告知用户：`🧠 思维导图已更新：knowledge_store/{主题}_思维导图.md`
 
 **→ 写入 Word**（如果 DOCX_PATH 存在）：
 ```bash
@@ -101,6 +102,7 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
   --file "{DOCX_PATH}" --step 1 --title "概念地图" \
   --content-file /tmp/smart-learn-step1.md
 ```
+执行后告知用户：`📄 Word 文档已更新：knowledge_store/{主题}_学习笔记.docx`
 
 ---
 
@@ -137,6 +139,7 @@ python .claude/skills/smart-learn/mindmap_utils.py update \
   --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 2 \
   --concept "{概念名}" --core "{核心思想摘要}" --analogy "{类比关键词}"
 ```
+执行后告知用户：`🧠 {概念名} 已同步到思维导图`（首次同步时给出完整路径）
 
 **→ 写入 Word**（每个概念用户确认后立即写入）：
 ```bash
@@ -177,6 +180,7 @@ python .claude/skills/smart-learn/mindmap_utils.py update \
   --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 3 \
   --concept "{概念名}" --weak "{薄弱原因摘要}"
 ```
+如有薄弱点标记，告知用户：`🧠 {概念名} 已标记 ⚠️ 到思维导图`
 
 **→ 写入 Word**（每题点评后立即写入，含题目+用户回答+点评+参考答案）：
 ```bash
@@ -210,8 +214,9 @@ python .claude/skills/smart-learn/mindmap_utils.py update \
   --file "{MINDMAP_FILE}" --data-file "{MINDMAP_DATA}" --step 4 \
   --assoc-target "{关联主题名}" --assoc-relation "{一句话关系}"
 ```
+告知用户：`🧠 知识关联已添加到思维导图`
 
-**→ 写入 Word**（含对比表格和网络图）
+**→ 写入 Word**（含对比表格和网络图），告知用户：`📄 关联分析已写入 Word`
 
 ---
 
@@ -262,11 +267,11 @@ python .claude/skills/smart-learn/docx_utils.py finalize \
   --keywords "{k1, k2, k3, k4, k5}"
 ```
 
-最后告知用户：
-- 📝 Markdown 笔记路径（始终生成）
-- 🧠 思维导图路径（始终生成，Mermaid 格式）
-- 📄 Word 文档路径（如有）
-- ⚠️ 薄弱点列表（建议回顾）
+最后以可点击路径告知用户全部产出物位置：
+- 📝 Markdown 笔记：`knowledge_store/{主题slug}.md`
+- 🧠 思维导图：`knowledge_store/{主题}_思维导图.md`（Mermaid 格式，GitHub/VSCode 原生渲染）
+- 📄 Word 文档：`knowledge_store/{主题}_学习笔记.docx`（如有）
+- ⚠️ 薄弱点列表：（逐一列出）
 
 **→ 清理临时文件和检查点**（学习完成）：
 ```bash
