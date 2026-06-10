@@ -184,6 +184,10 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
 3. 如果没有，告知"这是该领域的第一个知识节点"
 4. 输出文本版知识网络图
 
+输出后等待用户回应：
+- "继续" → 进入步骤5
+- "补充关联" → 用户提出更多关联角度，追加分析
+
 **→ 同步到思维导图**（每个关联主题添加一个连接）：
 ```bash
 python .claude/skills/smart-learn/mindmap_utils.py update \
@@ -219,7 +223,11 @@ python .claude/skills/smart-learn/mindmap_utils.py update \
 `{k1}` `{k2}` `{k3}` `{k4}` `{k5}`
 ```
 
-**持久化**：
+输出精华笔记后等待用户回应：
+- "保存" → 写入所有文件
+- "修改XX" → 调整后重新确认
+
+**持久化**（用户确认后执行）：
 1. **必做**：将完整五步报告写入 `knowledge_store/{主题slug}.md`
 2. **必做**：最终化思维导图：
 ```bash
