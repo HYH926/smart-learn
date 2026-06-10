@@ -54,7 +54,9 @@ python .claude/skills/smart-learn/docx_utils.py init \
 
 ### 步骤 1：概念地图
 
-读取 `templates/1-concept-map.md` 按模板执行。将主题拆解为 5~8 个子概念，按学习依赖排序，标注难度。
+1. 调用 WebSearch 搜索该主题的最新资料（中文优先，确保准确性和及时性）
+2. 读取 `templates/1-concept-map.md` 按模板执行
+3. 将主题拆解为 5~8 个子概念，按学习依赖排序，标注难度
 
 **固定输出格式**：
 ```
