@@ -49,6 +49,10 @@ python .claude/skills/smart-learn/docx_utils.py init \
 
 - 记录 `MINDMAP_FILE` 和 `MINDMAP_DATA` 路径，后续每步同步更新
 - 如果 docx init 返回 `"status": "no_docx"` → 告知用户可 `pip install python-docx`，继续执行
+- **学习中断恢复**：初始化时检查 `knowledge_store/{主题slug}_checkpoint.json` 是否存在：
+  - 如果存在 → 告知用户"检测到上次未完成的学习（已完成步骤N）"，询问"继续上次 / 重新开始"
+  - 如果选择继续 → 跳转到对应步骤继续执行，恢复已有状态
+  - 每完成一步 → 更新 checkpoint（`{"topic":"...", "last_step": N, "mindmap_data":"...", "docx_path":"..."}`）
 
 ---
 
@@ -78,6 +82,11 @@ python .claude/skills/smart-learn/docx_utils.py init \
 输出后等待用户回应：
 - "继续" / "OK" → 进入步骤2
 - "调整XX" → 修改后重新确认
+
+**→ 保存检查点**（中断恢复用）：
+```bash
+python -c "import json; json.dump({'topic':'{主题}','last_step':1}, open('knowledge_store/{主题slug}_checkpoint.json','w'))"
+```
 
 **→ 同步到思维导图**（始终执行）：
 ```bash
@@ -153,7 +162,14 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
 - **参考答案**：一个高质量的示范回答
 - **掌握度**：✅ 已掌握 / ⚠️ 部分掌握 / ❌ 薄弱
 
-全部完成后汇总薄弱点，询问：继续 → 步骤4 / 回顾薄弱概念 → 重讲
+全部完成后汇总薄弱点，询问用户：
+- "继续" → 进入步骤4
+- "回顾薄弱概念" → 对每个 ❌ 薄弱概念：
+  1. 用不同的类比重新解释该概念（不重复步骤2的原版）
+  2. 出一道新的同类层级的题目
+  3. 用户回答后点评
+  4. 直到掌握度变为 ✅/⚠️ 或用户说"先继续"
+  5. 更新思维导图移除该概念的 ⚠️ 标记（如果已掌握）
 
 **→ 同步到思维导图**（每题点评后，如果标记为 ❌ 薄弱则更新）：
 ```bash
@@ -251,6 +267,12 @@ python .claude/skills/smart-learn/docx_utils.py finalize \
 - 🧠 思维导图路径（始终生成，Mermaid 格式）
 - 📄 Word 文档路径（如有）
 - ⚠️ 薄弱点列表（建议回顾）
+
+**→ 清理临时文件和检查点**（学习完成）：
+```bash
+rm -f /tmp/smart-learn-step*.md /tmp/smart-learn-concept*.md
+rm -f knowledge_store/{主题slug}_checkpoint.json
+```
 
 ---
 

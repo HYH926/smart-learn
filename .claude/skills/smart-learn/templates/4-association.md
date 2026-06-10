@@ -6,11 +6,12 @@
 
 ## 检索
 
-在 `d:\future\knowledge_store\` 目录下搜索相关笔记：
+在项目根目录的 `knowledge_store/` 下搜索相关笔记：
 
-1. 用 Glob 列出所有 `*.md` 文件
-2. 用 Grep 搜索关键词匹配
+1. 用 Glob 列出 `knowledge_store/**/*.md` 文件
+2. 用 Grep 在 knowledge_store/ 中搜索关键词匹配
 3. 读到匹配的笔记，提取核心概念和关键词
+4. 如果 knowledge_store/ 目录不存在，跳过检索（首次使用正常现象）
 
 ## 对比维度
 

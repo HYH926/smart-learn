@@ -137,39 +137,102 @@ def add_step(filepath, step_num, step_title, content_md=None, content_file=None,
     # 步骤标题
     _add_heading(doc, f'步骤{step_num}：{step_title}', level=1)
 
-    # 内容：按段落解析
-    for line in content_md.strip().split('\n'):
-        line = line.strip()
+    # 内容：状态机解析（处理代码块和嵌套结构）
+    lines = content_md.strip().split('\n')
+    i = 0
+    in_code_block = False
+    code_lines = []
+
+    def _flush_code():
+        nonlocal code_lines
+        if code_lines:
+            _add_code_block(doc, '\n'.join(code_lines))
+            code_lines = []
+
+    def _parse_inline(p, text):
+        """解析行内 Markdown：**加粗**、`代码`、普通文本"""
+        import re
+        tokens = re.split(r'(\*\*.*?\*\*|`.*?`)', text)
+        for tok in tokens:
+            if tok.startswith('**') and tok.endswith('**'):
+                run = p.add_run(tok[2:-2])
+                run.font.bold = True
+            elif tok.startswith('`') and tok.endswith('`'):
+                run = p.add_run(tok[1:-1])
+                run.font.name = 'Consolas'
+                run.font.size = Pt(9.5)
+            else:
+                p.add_run(tok)
+
+    while i < len(lines):
+        line = lines[i].strip()
+
         if not line:
+            _flush_code()
+            i += 1
             continue
 
-        if line.startswith('### '):
+        # 代码块处理
+        if line.startswith('```'):
+            if in_code_block:
+                _flush_code()
+                in_code_block = False
+            else:
+                in_code_block = True
+                code_lines = []
+            i += 1
+            continue
+
+        if in_code_block:
+            code_lines.append(lines[i])  # 保留原始缩进
+            i += 1
+            continue
+
+        # 标题
+        if line.startswith('#### '):
+            _add_heading(doc, line[5:], level=4)
+        elif line.startswith('### '):
             _add_heading(doc, line[4:], level=3)
         elif line.startswith('## '):
             _add_heading(doc, line[3:], level=2)
-        elif line.startswith('```'):
-            pass  # 代码块开始/结束标记跳过，内容在下个循环中处理
+        # 表格（跳过，在 extra 中处理）
         elif line.startswith('|') and '|' in line[1:]:
-            pass  # 表格在 extra 中专门处理
+            pass
+        # 加粗列表项：- **名称**：说明
         elif line.startswith('- **') and '**：' in line:
-            # 薄弱点格式: - **名称**：说明
             p = doc.add_paragraph()
             parts = line[2:].split('**：', 1)
             if len(parts) == 2:
                 run_b = p.add_run(parts[0] + '**')
                 run_b.font.bold = True
-                p.add_run('：' + parts[1])
+                _parse_inline(p, '：' + parts[1])
             else:
-                p.add_run(line[2:])
-        elif line.startswith('- '):
-            doc.add_paragraph(line[2:], style='List Bullet')
+                _parse_inline(p, line[2:])
+        # 有序列表
+        elif line and line[0].isdigit() and '. ' in line[:4]:
+            p = doc.add_paragraph()
+            p.paragraph_format.left_indent = Cm(1)
+            _parse_inline(p, line)
+        # 无序列表
+        elif line.startswith('- ') or line.startswith('* '):
+            p = doc.add_paragraph(line[2:], style='List Bullet')
+        # 引用
         elif line.startswith('> '):
             p = doc.add_paragraph()
             run = p.add_run(line[2:])
             run.font.italic = True
             run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+        # 分割线
+        elif line.startswith('---') or line.startswith('***'):
+            doc.add_paragraph('─' * 40)
+        # 普通段落
         else:
-            doc.add_paragraph(line)
+            p = doc.add_paragraph()
+            _parse_inline(p, line)
+
+        i += 1
+
+    _flush_code()  # 文件末尾未闭合的代码块
 
     # 如果有表格数据
     if extra and extra.get('table'):
@@ -235,16 +298,20 @@ def finalize_doc(filepath, summary, weak_points, keywords):
 # ═══════════════════════════════════════
 
 def main():
-    if not HAS_DOCX:
-        print(json.dumps({"status": "no_docx", "msg": "请先 pip install python-docx"}))
-        sys.exit(0)
-
-    if len(sys.argv) < 2:
+    # --help / 无参数：永远可用，不检查依赖
+    if len(sys.argv) < 2 or sys.argv[1] in ("--help", "-h", "help"):
         print("用法: docx_utils.py <command> [options]")
         print("  init       --topic X --output-dir Y")
         print("  add-step   --file X --step N --title Y [--content Z | --content-file F] [--extra JSON]")
         print("  finalize   --file X --summary Y --weak-points Z --keywords W")
-        sys.exit(1)
+        if not HAS_DOCX:
+            print("\n⚠ 当前环境未安装 python-docx，init/add-step/finalize 将不可用")
+            print("  安装：pip install python-docx")
+        sys.exit(0)
+
+    if not HAS_DOCX:
+        print(json.dumps({"status": "no_docx", "msg": "请先 pip install python-docx"}))
+        sys.exit(0)
 
     cmd = sys.argv[1]
     args = _parse_args(sys.argv[2:])

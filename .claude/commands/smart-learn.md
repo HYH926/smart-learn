@@ -1,6 +1,6 @@
 ---
 description: 独立学习技能。基于费曼学习法五步闭环，所有步骤在主对话中内联透明执行。每学完一步同步更新 Mermaid 思维导图 + Word 文档（可选）。用法：/smart-learn 你想学的主题
-allowed-tools: Read, Write, Bash, WebSearch, Glob, Grep, AskUserQuestion
+allowed-tools: Read, Write, Bash, WebSearch, Glob, Grep
 ---
 
 启动 Smart Learn 学习技能。

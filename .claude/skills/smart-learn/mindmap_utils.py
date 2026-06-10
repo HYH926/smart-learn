@@ -23,8 +23,12 @@ def _indent(text, level):
 
 
 def _safe_id(text):
-    """Mermaid 节点 ID 不能有特殊字符"""
-    return text.replace(" ", "_").replace("(", "").replace(")", "").replace("：", "").replace(":", "")
+    """Mermaid 节点 ID 不能有特殊字符。加 hash 后缀防止重名冲突"""
+    import hashlib
+    base = text.replace(" ", "_").replace("(", "").replace(")", "").replace("：", "").replace(":", "").replace("-", "_")
+    # 短 hash 防止 "API设计" 和 "API-设计" 碰撞
+    suffix = hashlib.md5(text.encode()).hexdigest()[:4]
+    return f"{base}_{suffix}"
 
 
 def _short(text, max_len=20):
@@ -97,7 +101,17 @@ def generate_mindmap(state):
 
 def load_state(data_file):
     if os.path.exists(data_file):
-        return json.loads(Path(data_file).read_text(encoding='utf-8'))
+        try:
+            return json.loads(Path(data_file).read_text(encoding='utf-8'))
+        except json.JSONDecodeError as e:
+            backup = data_file + ".corrupted"
+            try:
+                os.rename(data_file, backup)
+            except OSError:
+                pass
+            print(json.dumps({
+                "status": "warn", "msg": f"状态文件损坏({e.msg})，已备份为 {backup}，使用空白状态重建"
+            }, ensure_ascii=False))
     return {"topic": "", "concepts": [], "associations": [], "summary": "", "keywords": []}
 
 
@@ -180,30 +194,52 @@ def main():
         elif step == 2:
             # 更新单个概念的核心思想和类比
             concept_name = args.get("--concept", "")
+            found = False
             for c in state["concepts"]:
                 if c["name"] == concept_name:
                     if args.get("--core"):
                         c["core"] = args["--core"]
                     if args.get("--analogy"):
                         c["analogy"] = args["--analogy"]
+                    found = True
                     break
+            if not found and concept_name:
+                concept_names = [c["name"] for c in state["concepts"]]
+                print(json.dumps({
+                    "status": "warn", "action": "update", "step": step,
+                    "msg": f"概念「{concept_name}」未在步骤1注册。已注册：{concept_names}"
+                }, ensure_ascii=False))
+                return
 
         elif step == 3:
             # 标记薄弱点
             concept_name = args.get("--concept", "")
             weak_reason = args.get("--weak", "")
+            found = False
             for c in state["concepts"]:
                 if c["name"] == concept_name:
                     c["weak"] = True
                     c["weak_reason"] = weak_reason
+                    found = True
                     break
+            if not found and concept_name:
+                concept_names = [c["name"] for c in state["concepts"]]
+                print(json.dumps({
+                    "status": "warn", "action": "update", "step": step,
+                    "msg": f"概念「{concept_name}」未在步骤1注册。已注册：{concept_names}"
+                }, ensure_ascii=False))
+                return
 
         elif step == 4:
-            # 添加关联
+            # 添加关联（自动去重）
             target = args.get("--assoc-target", "")
             relation = args.get("--assoc-relation", "")
             if target:
-                state["associations"].append({"target": target, "relation": relation})
+                existing = [a for a in state["associations"] if a["target"] == target]
+                if existing:
+                    existing[0]["relation"] = relation  # 更新已有
+                else:
+                    state["associations"].append({"target": target, "relation": relation})
 
         save_state(data_file, state)
         mermaid = generate_mindmap(state)
