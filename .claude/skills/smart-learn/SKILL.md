@@ -6,7 +6,7 @@ context: inline
 
 # Smart Learn — 增量内联学习技能
 
-基于费曼学习法五步闭环。每学完一步，自动将内容**增量写入 Word 文档**。文档随学习进程实时生长，而非最后一次性生成。
+基于费曼学习法五步闭环。纯 Markdown 零依赖可用；可选 `pip install python-docx` 获得增量 Word 文档功能。文档随学习进程实时生长，而非最后一次性生成。
 
 ## 触发
 
@@ -25,53 +25,57 @@ context: inline
 
 1. **禁止使用 Agent 工具** — 所有步骤由主对话直接执行
 2. **每步可见** — 输出实时展示，用户确认后进入下一步
-3. **增量 Word 文档** — 每步确认后立即写入同一个 .docx 文件
-4. **自然对话** — 不用弹窗确认，用户用自然语言回应即可
-5. **双格式持久化** — .docx（Word文档） + .md（知识库笔记）
+3. **自然对话** — 不用弹窗确认，用户用自然语言回应即可
+4. **零外部依赖（核心）** — Markdown 学习 + 存储不依赖任何第三方包
+5. **双格式持久化** — .md（知识库笔记，始终生成） + .docx（Word文档，可选）
 
 ---
 
-## 准备阶段：初始化 Word 文档
+## 初始化（可选 Word 文档）
 
-确认学习主题后，第一步是创建 Word 文档：
+学习开始前，尝试创建 Word 文档用于增量记录。失败不影响核心流程：
 
 ```bash
 python .claude/skills/smart-learn/docx_utils.py init \
   --topic "主题名" \
-  --output-dir "d:/future/knowledge_store"
+  --output-dir "knowledge_store"
 ```
 
-如果输出 `"status": "no_docx"`，告知用户需要：
-```
-pip install python-docx
-```
-然后继续执行后续步骤（Word 功能静默跳过，Markdown 存储仍正常进行）。
-
-如果初始化成功，告知用户文档路径。记录 `DOCX_PATH` 用于后续增量写入。
+- 如果成功 → 记录 `DOCX_PATH`，后续每步增量写入
+- 如果 `"status": "no_docx"` → 告知用户"Word 文档功能未启用（可选 `pip install python-docx` 开启）"，继续执行，仅用 Markdown 存储
 
 ---
 
 ## 五步工作流
 
-每一步完成后，调用 docx_utils.py 增量写入同一个 Word 文档。
+每一步的核心输出格式保持不变。Word 写入是每步末尾的附加操作。
 
 ---
 
 ### 步骤 1：概念地图
 
-读取 `templates/1-concept-map.md`，搜索 + 拆解为 5~8 个子概念。
+读取 `templates/1-concept-map.md` 按模板执行。将主题拆解为 5~8 个子概念，按学习依赖排序，标注难度。
 
-**输出后等待用户确认**：
-- "继续" → 写入 Word → 进入步骤2
+**固定输出格式**：
+```
+## 📊 概念地图：{主题}
+
+1. {概念名}（{难度}）→ {一句话解决什么问题}
+   ↓
+2. {概念名}（{难度}）→ {一句话解决什么问题}
+   ↓
+...
+```
+
+输出后等待用户回应：
+- "继续" / "OK" → 进入步骤2
 - "调整XX" → 修改后重新确认
 
-**写入 Word**：
+**→ 写入 Word**（如果 DOCX_PATH 存在）：
 ```bash
-# 先将概念地图内容写入临时文件
+# 将以上概念地图内容写入临时文件，然后调用
 python .claude/skills/smart-learn/docx_utils.py add-step \
-  --file "{DOCX_PATH}" \
-  --step 1 \
-  --title "概念地图" \
+  --file "{DOCX_PATH}" --step 1 --title "概念地图" \
   --content-file /tmp/smart-learn-step1.md
 ```
 
@@ -79,74 +83,110 @@ python .claude/skills/smart-learn/docx_utils.py add-step \
 
 ### 步骤 2：费曼解释
 
-读取 `templates/2-feynman.md`。**每讲完一个概念**，等用户回应后：
-1. 把该概念的讲解内容追加入临时累积文件
-2. 用户全部确认后，一次性写入 Word
+读取 `templates/2-feynman.md` 按模板执行。对步骤1中的每个概念，逐一用五维框架解释。
 
-或者更好的做法：每讲完一个概念就写入 Word，实现真正的"实时生长"。
+**每个概念的固定输出结构**：
+```markdown
+### {序号}. {概念名}
 
-**每个概念写入 Word**：
-```bash
-python .claude/skills/smart-learn/docx_utils.py add-step \
-  --file "{DOCX_PATH}" \
-  --step 2 \
-  --title "{序号}. {概念名}" \
-  --content-file /tmp/smart-learn-step2-concept.md
+**为什么需要？** → {背景与动机，旧方案有什么问题}
+**核心思想** → {一句话说清本质}
+**类比理解** → {日常场景类比，完全非技术领域}
+**示例** → {最小可运行的代码/真实场景}
+**一句话** → {离开后能记住的那句}
 ```
 
-**每个概念讲完后等待用户**：
-- "继续/下一个" → 写 Word → 讲下一个
-- "换类比/没懂" → 重讲（不写 Word，讲对了再写）
-- 任意提问 → 解答
+每讲完一个概念，等待用户回应：
+- "继续" / "下一个" → 讲下一个
+- "换一个类比" / "没懂" → 用不同类比重讲（此时不写 Word，确认理解了再写）
+- 任意提问 → 针对性解答
 
-全部讲完后做 3~5 句串联串讲，写入 Word，进入步骤3。
+全部概念讲完后，用 3~5 句话串联串讲，然后进入步骤3。
 
-**禁止**：用未解释的术语解释术语、从定义开始、类比用技术概念。
+**禁止**：
+- 用未解释的术语解释另一个术语
+- 从定义开始（必须从"为什么需要"开始）
+- 类比用另一个技术概念
+
+**→ 写入 Word**（每个概念用户确认后立即写入，实现"实时生长"）：
+```bash
+python .claude/skills/smart-learn/docx_utils.py add-step \
+  --file "{DOCX_PATH}" --step 2 --title "{序号}. {概念名}" \
+  --content-file /tmp/smart-learn-step2-concept.md
+```
 
 ---
 
 ### 步骤 3：递进式自测
 
-读取 `templates/3-self-test.md`。每个概念 1 道题，从三层中选最合适层。
+读取 `templates/3-self-test.md` 按模板执行。为每个概念出 1 道题，从三层中选最合适的一层：
 
-**逐个提问**，用户回答后：
-- 给出点评 + 参考答案 + 掌握度标记
-- **立即写入 Word**（含题目、用户回答、点评、参考答案）
+| 层次 | 考察目标 | 适合什么概念 |
+|------|---------|------------|
+| 理解层 | 改变条件问变化 | 核心机制类（如缓存策略） |
+| 应用层 | 新场景设计方案 | 工程实践类（如API设计） |
+| 边界层 | 什么时候失效 | 理论约束类（如CAP定理） |
 
+**逐个提问**，每次只出一道题。用户回答后给出：
+- **点评**：具体评价哪里好、哪里不足
+- **参考答案**：一个高质量的示范回答
+- **掌握度**：✅ 已掌握 / ⚠️ 部分掌握 / ❌ 薄弱
+
+全部完成后汇总薄弱点，询问：继续 → 步骤4 / 回顾薄弱概念 → 重讲
+
+**→ 写入 Word**（每题点评后立即写入，含题目+用户回答+点评+参考答案）：
 ```bash
 python .claude/skills/smart-learn/docx_utils.py add-step \
-  --file "{DOCX_PATH}" \
-  --step 3 \
-  --title "{概念名} — 自测" \
+  --file "{DOCX_PATH}" --step 3 --title "{概念名} — 自测" \
   --content-file /tmp/smart-learn-step3-q.md
 ```
-
-全部完成后汇总薄弱点，询问：继续→步骤4 / 回顾薄弱概念→重讲。
 
 ---
 
 ### 步骤 4：关联内化
 
-读取 `templates/4-association.md`。
+读取 `templates/4-association.md` 按模板执行。
 
-1. Glob 检查 `d:\future\knowledge_store\` 下已有笔记
-2. 有相关主题 → 四维对比（问题域/可迁移/差异点/位置关系）
-3. 无关联 → 告知"第一个知识节点"
-4. 输出知识网络图
+1. 用 Glob 检查 `knowledge_store/` 下已有的学习笔记
+2. 如果有相关主题，做四维对比：
+   - 解决的是同一个问题吗？
+   - 哪些经验可以直接迁移？
+   - 新概念有什么独特性？
+   - 知识地图中位置关系？
+3. 如果没有，告知"这是该领域的第一个知识节点"
+4. 输出文本版知识网络图
 
-**写入 Word**（含对比表格和网络图）。
+**→ 写入 Word**（含对比表格和网络图）
 
 ---
 
-### 步骤 5：巩固总结
+### 步骤 5：巩固总结并保存
 
-读取 `templates/5-summary.md`。
+读取 `templates/5-summary.md` 按模板执行。
 
-输出精华笔记（≤500字）：核心公式 + 3 关键点 + 薄弱点 + 类比 + 关键词。
+**输出精华笔记**（≤500 字）：
+```markdown
+## 🎯 核心公式
+{一句"懂了就懂了80%"的话}
+
+## 🔑 三个关键点
+1. {洞察一}
+2. {洞察二}
+3. {洞察三}
+
+## ⚠️ 薄弱点
+- **{具体薄弱点}**：{为什么容易搞混} → {正确理解}
+
+## 🏗️ 一句话类比
+{日常场景一句话总结}
+
+## 🏷️ 关键词
+`{k1}` `{k2}` `{k3}` `{k4}` `{k5}`
+```
 
 **持久化**：
-1. 写入完整五步报告到 `d:\future\knowledge_store\{主题slug}.md`
-2. **最终化 Word 文档**：
+1. **必做**：将完整五步报告写入 `knowledge_store/{主题slug}.md`
+2. **可选**：最终化 Word 文档：
 ```bash
 python .claude/skills/smart-learn/docx_utils.py finalize \
   --file "{DOCX_PATH}" \
@@ -155,43 +195,32 @@ python .claude/skills/smart-learn/docx_utils.py finalize \
   --keywords "{k1, k2, k3, k4, k5}"
 ```
 
-告知用户：
-- Word 文档路径 📄
-- Markdown 笔记路径 📝
-- 薄弱点列表 ⚠️
+最后告知用户：
+- 📝 Markdown 笔记路径（始终生成）
+- 📄 Word 文档路径（如有）
+- ⚠️ 薄弱点列表（建议回顾）
 
 ---
 
-## 增量 Word 文档流程图
+## Word 文档流程图（可选功能）
 
 ```
 /smart-learn 主题
      │
-     ├─ 准备 ──→ 📄 创建空白 Word
+     ├─ 初始化 ──→ 📄 尝试创建 Word（失败则跳过）
      │
      ├─ 步骤1 ──→ 📄 写入「概念地图」
-     │
-     ├─ 步骤2 ──→ 📄 写入「概念A解释」
-     │         ──→ 📄 写入「概念B解释」
-     │         ──→ ...（每概念实时写入）
-     │
-     ├─ 步骤3 ──→ 📄 写入「问题1+回答+点评」
-     │         ──→ 📄 写入「问题2+回答+点评」
-     │         ──→ ...（每题实时写入）
-     │
+     ├─ 步骤2 ──→ 📄 每概念确认后写入
+     ├─ 步骤3 ──→ 📄 每题点评后写入
      ├─ 步骤4 ──→ 📄 写入「关联分析」
-     │
-     └─ 步骤5 ──→ 📄 写入「总结+薄弱点+关键词」
-                  📝 写入 Markdown 笔记
+     └─ 步骤5 ──→ 📄 最终化 + 📝 Markdown 笔记
 ```
-
-**核心理念**：Word 文档不是"结课证书"，而是你从步骤1到步骤5的**全程学习日志**。
 
 ---
 
 ## 知识连续性
 
-- 学习前检查 `d:\future\knowledge_store/` 目录已有笔记
+- 学习前检查 `knowledge_store/` 目录已有笔记
 - 发现关键词匹配的旧笔记时，主动在步骤4做关联
 - 所有笔记（.md + .docx）保存到同一目录，形成累积知识库
 
@@ -204,4 +233,4 @@ python .claude/skills/smart-learn/docx_utils.py finalize \
 | `templates/3-self-test.md` | 递进式自测模板 |
 | `templates/4-association.md` | 关联内化模板 |
 | `templates/5-summary.md` | 巩固总结模板 |
-| `docx_utils.py` | Word 文档增量生成工具 |
+| `docx_utils.py` | Word 文档增量生成工具（可选） |
