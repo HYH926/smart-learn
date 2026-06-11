@@ -2,6 +2,7 @@
 
 import sys
 import json
+import os
 
 
 def main():
@@ -9,52 +10,57 @@ def main():
         print("Smart Learn v2.0 — AI-powered interactive learning")
         print("")
         print("Commands:")
-        print("  smart-learn init <topic> [--dir knowledge_store]")
+        print("  smart-learn init <topic> [--dir DIR]")
         print("  smart-learn mindmap init|update|finalize ...")
-        print("  smart-learn docx init|add|finalize ...")
+        print("  smart-learn docx init|add-step|finalize ...")
         print("  smart-learn knowledge list|search|weak|stats")
         print("")
-        print("Usage with AI:")
-        print("  Copy a prompt from https://github.com/HYH926/smart-learn-plugin/prompts/")
-        print("  Paste into any AI chat (Claude, GPT, Gemini, DeepSeek, Qwen...)")
-        print("  The AI will call these CLI tools through the learning workflow.")
+        print("Quick start:")
+        print("  pip install .")
+        print("  # Copy prompts/universal-learn.md into any AI chat")
+        print("  # Works with: Claude, GPT, Gemini, DeepSeek, Qwen...")
         sys.exit(0)
 
     cmd = sys.argv[1]
 
-    if cmd == "init":
-        topic = sys.argv[2] if len(sys.argv) > 2 else "未命名"
-        # Parse --dir
-        args = {}
+    # Parse --dir from remaining args
+    def get_dir(default="knowledge_store"):
         for i, a in enumerate(sys.argv):
             if a == "--dir" and i + 1 < len(sys.argv):
-                args["--output-dir"] = sys.argv[i + 1]
-        from .mindmap import init_mindmap
-        from .docx_gen import init_doc
+                return sys.argv[i + 1]
+        return default
 
-        mm = init_mindmap(topic, args.get("--output-dir", "knowledge_store"))
+    if cmd == "init":
+        topic = sys.argv[2] if len(sys.argv) > 2 else "未命名"
+        output_dir = get_dir()
+
+        # Mindmap (always works, zero dependency)
+        from .mindmap import init_mindmap
+        mm = init_mindmap(topic, output_dir)
         print(json.dumps(mm, ensure_ascii=False))
-        # Try docx (optional)
-        dw = init_doc(topic, args.get("--output-dir", "knowledge_store"))
+
+        # Word doc (optional, needs python-docx)
+        from .docx_gen import init_doc
+        dw = init_doc(topic, output_dir)
         if dw:
             print(json.dumps(dw, ensure_ascii=False))
 
     elif cmd == "mindmap":
-        from .mindmap import main as mm_main
+        from .mindmap import main as sub_main
         sys.argv = [sys.argv[0]] + sys.argv[2:]
-        mm_main()
+        sub_main()
 
     elif cmd == "docx":
-        from .docx_gen import main as dx_main
+        from .docx_gen import main as sub_main
         sys.argv = [sys.argv[0]] + sys.argv[2:]
-        dx_main()
+        sub_main()
 
     elif cmd == "knowledge":
-        from .knowledge import main as kn_main
+        from .knowledge import main as sub_main
         sys.argv = [sys.argv[0]] + sys.argv[2:]
-        kn_main()
+        sub_main()
 
     else:
-        print(f"未知命令: {cmd}")
-        print("使用 'smart-learn' 查看帮助")
+        print(f"Unknown command: {cmd}")
+        print("Run 'smart-learn' without arguments for help.")
         sys.exit(1)

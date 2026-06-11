@@ -137,12 +137,32 @@ def write_mindmap(filepath, mermaid_text):
 
 
 # ═══════════════════════════════════════
+#  公共 API
+# ═══════════════════════════════════════
+
+def init_mindmap(topic, output_dir="knowledge_store"):
+    """创建思维导图，返回文件路径字典"""
+    os.makedirs(output_dir, exist_ok=True)
+    data_file = os.path.join(output_dir, f"{topic}_mindmap_state.json")
+    state = {"topic": topic, "concepts": [], "associations": [], "summary": "", "keywords": []}
+    save_state(data_file, state)
+    mermaid = generate_mindmap(state)
+    mindmap_file = os.path.join(output_dir, f"{topic}_思维导图.md")
+    write_mindmap(mindmap_file, mermaid)
+    return {
+        "status": "ok", "action": "init",
+        "mindmap_file": mindmap_file,
+        "data_file": data_file
+    }
+
+
+# ═══════════════════════════════════════
 #  CLI 入口
 # ═══════════════════════════════════════
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: mindmap_utils.py <command> [options]")
+        print("用法: python -m smart_learn.mindmap <command> [options]")
         print("  init      --topic X --output-dir Y")
         print("  update    --file X --step N --data-file Y [--concept Z] [--core C] [--analogy A] [--weak W] [--assoc-target T]")
         print("  finalize  --file X --data-file Y --summary S --weak-points W --keywords K")
@@ -152,23 +172,11 @@ def main():
     args = _parse_args(sys.argv[2:])
 
     if cmd == "init":
-        topic = args.get("--topic", "未命名")
-        output_dir = args.get("--output-dir", ".")
-        os.makedirs(output_dir, exist_ok=True)
-
-        data_file = os.path.join(output_dir, f"{topic}_mindmap_state.json")
-        state = {"topic": topic, "concepts": [], "associations": [], "summary": "", "keywords": []}
-        save_state(data_file, state)
-
-        mermaid = generate_mindmap(state)
-        mindmap_file = os.path.join(output_dir, f"{topic}_思维导图.md")
-        write_mindmap(mindmap_file, mermaid)
-
-        print(json.dumps({
-            "status": "ok", "action": "init",
-            "mindmap_file": mindmap_file,
-            "data_file": data_file
-        }, ensure_ascii=False))
+        result = init_mindmap(
+            topic=args.get("--topic", "未命名"),
+            output_dir=args.get("--output-dir", "knowledge_store"),
+        )
+        print(json.dumps(result, ensure_ascii=False))
 
     elif cmd == "update":
         data_file = args["--data-file"]
