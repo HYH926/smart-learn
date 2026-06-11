@@ -6,15 +6,15 @@
 
 ## 为什么选择 Smart Learn？
 
-| | ai-learn 插件 (Agent 模式) | Smart Learn (内联模式) |
+| | Smart Learn (内联模式) |
 |---|---|---|
-| 执行方式 | 子 Agent 黑盒执行 | **主对话透明执行** |
-| 你能看到讲解过程吗 | ❌ 只有弹窗确认 | ✅ 每一步实时可见 |
-| 交互方式 | 三按钮盲选 | **自然语言对话** |
-| 外部依赖 | chromadb + sqlite3 + Python | Markdown: 零 / Word: python-docx（可选） |
-| 知识存储 | SQLite + Chroma | **增量 Word 文档 + Markdown** |
-| 增量更新 | ❌ 仅最后保存 | ✅ 每步实时写入同一 Word |
-| 文件数 | 11 + Python | 8 个文件 |
+| 执行方式 || **主对话透明执行** |
+| 你能看到讲解过程吗 || ✅ 每一步实时可见 |
+| 交互方式 || **自然语言对话** |
+| 外部依赖 || Markdown: 零 / Word: python-docx（可选） |
+| 知识存储 || **增量 Word 文档 + Markdown** |
+| 增量更新 || ✅ 每步实时写入同一 Word |
+| 文件数 || 8 个文件 |
 
 ## 快速开始
 
