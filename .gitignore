@@ -10,11 +10,15 @@ desktop.ini
 # Knowledge store (user's personal learning data)
 knowledge_store/
 
-# Python (if user adds scripts later)
+# Python
 __pycache__/
 *.pyc
+*.egg-info/
+dist/
+build/
 .venv/
 venv/
+src/smart_learn.egg-info/
 
 # Temp
 *.tmp
