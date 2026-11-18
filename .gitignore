@@ -20,6 +20,11 @@ build/
 venv/
 src/smart_learn.egg-info/
 
+# Generated learning artifacts outside the default store
+*_学习笔记.docx
+*_checkpoint.json
+*_mindmap_state.json
+
 # Temp
 *.tmp
 *.swp
