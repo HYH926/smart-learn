@@ -1,7 +1,15 @@
 # Smart Learn — AI 交互式学习插件
 
 > 基于费曼学习法五步闭环：概念地图 → 费曼解释 → 自测检验 → 关联内化 → 巩固总结。
-> **支持所有主流大模型。零核心依赖。**
+> **支持所有主流大模型。核心学习流程零第三方依赖；本地持久化和导图同步需要 Python 3.9+，Word 导出需要可选的 python-docx。**
+
+## 在线体验
+
+无需克隆即可体验五步流程的第三方演示：
+
+https://socialistic.ai/en/skill/smart-learn-80f5d1?utm_source=github&utm_medium=issue&utm_campaign=20260612-summer-vibe-coding-learners&utm_content=badge
+
+> 该演示由第三方提供，不在本仓库控制范围内。不要输入敏感或私人学习内容；如果链接不可用，使用下方本地安装方式或复制 prompts/universal-learn.md。
 
 ## 支持的大模型
 
@@ -73,6 +81,15 @@ smart-learn/
 | 前置评估 | 自然语言触发 | Prompt 内支持 |
 | 思维导图 | Mermaid .md | Mermaid .md |
 | Word 文档 | 可选 | 可选 |
+
+## 运行前提与降级策略
+
+- 核心五步流程不依赖第三方包；本地导图和 checkpoint 需要 Python 3.9+。
+- 没有 Bash、Python 或写权限时：继续在对话中输出 Markdown 和 Mermaid 源码，但明确说明“未写入文件”，不要声称已同步。
+- 没有 python-docx 时：跳过 Word，不影响五步学习。
+- 主题名会转换为安全 slug 后再用作文件名；不要把学习笔记提交到公开仓库。
+- 知识库或 checkpoint 损坏时：保留备份并提示恢复/重开，不静默覆盖。
+- 第三方在线演示不可用时：使用本地安装或通用 Prompt。
 
 ## License
 
