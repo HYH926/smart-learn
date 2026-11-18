@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smart-learn"
-version = "2.0.0"
+version = "2.0.1"
 description = "Smart Learn — AI-powered interactive learning using Feynman Technique. Works with any LLM."
 readme = "README.md"
 license = {text = "MIT"}
