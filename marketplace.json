@@ -6,9 +6,14 @@
       "name": "smart-learn",
       "source": "./",
       "description": "五步学习闭环（概念地图→费曼解释→自测检验→关联内化→巩固总结），主对话内联执行，所有步骤实时可见",
-      "version": "1.0.0",
+      "version": "2.0.1",
       "author": "HYH926",
-      "keywords": ["learning", "feynman", "education", "skill"]
+      "keywords": [
+        "learning",
+        "feynman",
+        "education",
+        "skill"
+      ]
     }
   ]
 }
