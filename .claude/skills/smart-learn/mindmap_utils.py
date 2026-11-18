@@ -17,6 +17,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+from runtime_utils import safe_slug, atomic_write_text, atomic_write_json, error_payload
+
 
 def _indent(text, level):
     return "  " * level + text
@@ -116,8 +118,7 @@ def load_state(data_file):
 
 
 def save_state(data_file, state):
-    Path(data_file).parent.mkdir(parents=True, exist_ok=True)
-    Path(data_file).write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
+    atomic_write_json(data_file, state)
 
 
 def write_mindmap(filepath, mermaid_text):
@@ -133,14 +134,14 @@ def write_mindmap(filepath, mermaid_text):
 ---
 *此思维导图随学习进程同步更新*
 """
-    Path(filepath).write_text(content, encoding='utf-8')
+    atomic_write_text(filepath, content)
 
 
 # ═══════════════════════════════════════
 #  CLI 入口
 # ═══════════════════════════════════════
 
-def main():
+def _main():
     if len(sys.argv) < 2:
         print("用法: mindmap_utils.py <command> [options]")
         print("  init      --topic X --output-dir Y")
@@ -156,12 +157,13 @@ def main():
         output_dir = args.get("--output-dir", ".")
         os.makedirs(output_dir, exist_ok=True)
 
-        data_file = os.path.join(output_dir, f"{topic}_mindmap_state.json")
+        topic_slug = safe_slug(topic)
+        data_file = os.path.join(output_dir, f"{topic_slug}_mindmap_state.json")
         state = {"topic": topic, "concepts": [], "associations": [], "summary": "", "keywords": []}
         save_state(data_file, state)
 
         mermaid = generate_mindmap(state)
-        mindmap_file = os.path.join(output_dir, f"{topic}_思维导图.md")
+        mindmap_file = os.path.join(output_dir, f"{topic_slug}_思维导图.md")
         write_mindmap(mindmap_file, mermaid)
 
         print(json.dumps({
@@ -241,6 +243,10 @@ def main():
                 else:
                     state["associations"].append({"target": target, "relation": relation})
 
+        else:
+            print(json.dumps(error_payload("INVALID_STEP", f"未知 --step: {step}"), ensure_ascii=False))
+            return
+
         save_state(data_file, state)
         mermaid = generate_mindmap(state)
         mindmap_file = args["--file"]
@@ -264,6 +270,16 @@ def main():
 
     else:
         print(f"未知命令: {cmd}")
+        sys.exit(1)
+
+
+def main():
+    try:
+        _main()
+    except SystemExit:
+        raise
+    except Exception as exc:
+        print(json.dumps(error_payload("INTERNAL_ERROR", str(exc)), ensure_ascii=False))
         sys.exit(1)
 
 

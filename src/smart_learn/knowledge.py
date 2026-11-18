@@ -7,6 +7,12 @@ from pathlib import Path
 from datetime import datetime
 
 
+def _is_note_file(path):
+    """Exclude generated map/checkpoint files from knowledge listings."""
+    name = path.name
+    return not any(marker in name for marker in ("思维导图", "checkpoint", "mindmap_state"))
+
+
 def list_topics(store_dir="knowledge_store"):
     """列出所有已学主题"""
     store = Path(store_dir)
@@ -15,12 +21,15 @@ def list_topics(store_dir="knowledge_store"):
     topics = []
     for f in store.glob("*.md"):
         name = f.stem
-        if "思维导图" in name or "checkpoint" in name or "mindmap_state" in name:
+        if not _is_note_file(f):
             continue
-        stat = f.stat()
+        try:
+            stat = f.stat()
+            content = f.read_text(encoding='utf-8')
+        except (OSError, UnicodeError):
+            continue
         # 提取核心公式
         core = ""
-        content = f.read_text(encoding='utf-8')
         match = re.search(r'🎯\s*核心公式.*?\n(.+)', content)
         if match:
             core = match.group(1).strip()[:80]
@@ -43,7 +52,7 @@ def search(query, store_dir="knowledge_store"):
 
     results = []
     for f in store.glob("*.md"):
-        if "思维导图" in f.name or "checkpoint" in f.name:
+        if not _is_note_file(f):
             continue
         try:
             content = f.read_text(encoding='utf-8')
@@ -69,7 +78,7 @@ def get_weak_points(store_dir="knowledge_store"):
     store = Path(store_dir)
     weak_points = []
     for f in store.glob("*.md"):
-        if "思维导图" in f.name or "checkpoint" in f.name:
+        if not _is_note_file(f):
             continue
         try:
             content = f.read_text(encoding='utf-8')
@@ -94,7 +103,7 @@ def get_weak_points(store_dir="knowledge_store"):
                 "first_marked": date_str,
                 "days_ago": days_ago,
             })
-    weak_points.sort(key=lambda w: w.get("days_ago") or 0, reverse=True)
+    weak_points.sort(key=lambda w: -1 if w.get("days_ago") is None else w["days_ago"], reverse=True)
     return weak_points
 
 

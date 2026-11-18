@@ -1,0 +1,23 @@
+name: Python syntax check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: python -m pip install pytest
+      - name: Run tests
+        run: python -m pytest -q
+      - name: Compile Python sources
+        run: |
+          python -m compileall -q .claude src
